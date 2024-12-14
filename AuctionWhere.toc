@@ -1,7 +1,7 @@
-## Interface: 110002
+## Interface: 110005, 110007
 ## Title: AuctionWhere
 ## Author: toonmaterial
-## Version: 1.0.0
+## Version: 1.1.0
 ## SavedVariables: AuctionWhereDB
 
 AuctionWhere.lua

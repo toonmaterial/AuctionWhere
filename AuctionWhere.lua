@@ -62,11 +62,16 @@ f:SetScript("OnEvent", function(_, event, ...)
 		local now = time()
 		local sevenDays = 3 * 24 * 60 * 60
 
-		for _, itemDB in pairs(computeTable(DB, ITEM)) do
-			for k, data in pairs(itemDB) do
+		local itemDB = computeTable(DB, ITEM)
+		for itemID, db in pairs(itemDB) do
+			for itemRealm, data in pairs(db) do
 				if now - data.time > sevenDays then
-					itemDB[k] = nil
+					db[itemRealm] = nil
 				end
+			end
+
+			if not next(db) then
+				itemDB[itemID] = nil
 			end
 		end
 	end
@@ -110,18 +115,42 @@ local function elapsed(t)
 end
 
 TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-	local array = GetPairsArray(computeTable(DB, ITEM, data.id))
-	table.sort(array, function(a, b) return a.value.price < b.value.price end)
+	local realms = GetPairsArray(computeTable(DB, ITEM, data.id))
+	table.sort(realms, function(a, b) return a.value.price < b.value.price end)
 
-	for _, d in ipairs(array) do
-		tooltip:AddLine(" ")
+	local function printPlayer(player)
+		local character = computeTable(DB, CHARACTER, player)
+		tooltip:AddLine(RAID_CLASS_COLORS[character.class]:WrapTextInColorCode(player))
+	end
+
+	local function printRealm(realm)
 		tooltip:AddDoubleLine(
-			d.key .. " " .. WHITE_FONT_COLOR:WrapTextInColorCode(elapsed(d.value.time)),
-			WHITE_FONT_COLOR:WrapTextInColorCode(GetMoneyString(d.value.price, true)))
+			realm.key .. " " .. WHITE_FONT_COLOR:WrapTextInColorCode(elapsed(realm.value.time)),
+			WHITE_FONT_COLOR:WrapTextInColorCode(GetMoneyString(realm.value.price, true)))
 
-		for player in pairs(computeTable(DB, CONNECTED_REALM_TO_CHARACTER, d.key)) do
-			local character = computeTable(DB, CHARACTER, player)
-			tooltip:AddLine(RAID_CLASS_COLORS[character.class]:WrapTextInColorCode(player))
+		local players = GetKeysArray(computeTable(DB, CONNECTED_REALM_TO_CHARACTER, realm.key))
+		table.sort(players)
+
+		if IsShiftKeyDown() or #players <= 3 then
+			for _, player in ipairs(players) do
+				printPlayer(player)
+			end
+		else
+			printPlayer(players[1])
+			tooltip:AddLine("...")
+			printPlayer(players[#players])
 		end
+	end
+
+	if IsShiftKeyDown() or #realms <= 3 then
+		for _, realm in ipairs(realms) do
+			tooltip:AddLine(" ")
+			printRealm(realm)
+		end
+	else
+		tooltip:AddLine(" ")
+		printRealm(realms[1])
+		tooltip:AddLine("...")
+		printRealm(realms[#realms])
 	end
 end)
